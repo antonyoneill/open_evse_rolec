@@ -521,8 +521,11 @@ void OnboardDisplay::Update(int8_t updmode)
 
 #ifdef RED_LED_REG
   // HA-driven LED override (modes: 1=flash b-g-b, 2=solid blue, 3=manual RGB).
-  // Never applies in any fault state - fault indication always wins.
-  if (m_ledMode && !g_EvseController.InFaultState() && !g_EvseController.InHardFault()) {
+  // Skipped in: any fault, hard fault, and during active charging (state C).
+  // Charging keeps its stock solid-blue indication so the user can always tell
+  // the car is drawing current regardless of HA's last $LN command.
+  if (m_ledMode && !g_EvseController.InFaultState() && !g_EvseController.InHardFault() &&
+      g_EvseController.GetState() != EVSE_STATE_C) {
     unsigned long now = millis();
     uint8_t r = 0, g = 0, b = 0;
 

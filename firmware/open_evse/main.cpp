@@ -404,6 +404,11 @@ void OnboardDisplay::Init()
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
+  m_ledMode = 0;
+  m_ledRGB = 0;
+  m_ledPeriodMs = 1000;
+  m_ledLastMs = 0;
+
 #ifdef GREEN_LED_REG
   pinGreenLed.init(GREEN_LED_REG,GREEN_LED_IDX,DigitalPin::OUT);
   SetGreenLed(0);
@@ -513,6 +518,36 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 void OnboardDisplay::Update(int8_t updmode)
 {
   if (updateDisabled() && !g_EvseController.InFaultState()) return;
+
+#ifdef RED_LED_REG
+  // HA-driven LED override (modes: 1=flash b-g-b, 2=solid blue, 3=manual RGB).
+  // Never applies in any fault state - fault indication always wins.
+  if (m_ledMode && !g_EvseController.InFaultState() && !g_EvseController.InHardFault()) {
+    unsigned long now = millis();
+    uint8_t r = 0, g = 0, b = 0;
+
+    if (m_ledMode == 1) {
+      // 3-phase flash: blue -> green -> blue, cycling on m_ledPeriodMs
+      unsigned long phase = (now / m_ledPeriodMs) % 3;
+      if (phase == 0)      { b = 1; }
+      else if (phase == 1) { g = 1; }
+      else                 { b = 1; }
+    }
+    else if (m_ledMode == 2) {
+      b = 1; // solid blue
+    }
+    else { // mode 3: manual RGB (bit2=red bit1=green bit0=blue)
+      r = (m_ledRGB >> 2) & 1;
+      g = (m_ledRGB >> 1) & 1;
+      b = m_ledRGB & 1;
+    }
+
+    SetRedLed(r);
+    SetGreenLed(g);
+    SetBlueLed(b);
+    return; // override owns the LEDs this pass - skip state-machine LED writes
+  }
+#endif // RED_LED_REG
 
   uint8_t curstate = g_EvseController.GetState();
 #ifdef LCD16X2

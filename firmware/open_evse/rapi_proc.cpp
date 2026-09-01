@@ -837,11 +837,15 @@ int EvseRapiProcessor::processCmd()
       if (tokenCnt == 3) {
 	u1.u8 = dtou32(tokens[1]);
 	u2.u8 = dtou32(tokens[2]);
+#ifdef RELAY_PWM
 	g_EvseController.setPwmPinParms(u1.u8,u2.u8);
+#endif
 	sprintf(g_sTmp,"\nZ0 %u %u",(unsigned)u1.u8,(unsigned)u2.u8);
 	Serial.println(g_sTmp);
+#ifdef RELAY_PWM
 	eeprom_write_byte((uint8_t*)EOFS_RELAY_CLOSE_MS,u1.u8);
 	eeprom_write_byte((uint8_t*)EOFS_RELAY_HOLD_PWM,u2.u8);
+#endif
       }
       rc = 0;
       break;

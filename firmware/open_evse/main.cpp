@@ -530,11 +530,11 @@ void OnboardDisplay::Update(int8_t updmode)
     uint8_t r = 0, g = 0, b = 0;
 
     if (m_ledMode == 1) {
-      // 3-phase flash: blue -> green -> blue, cycling on m_ledPeriodMs
+      // 3-phase flash: red -> green -> red, cycling on m_ledPeriodMs
       unsigned long phase = (now / m_ledPeriodMs) % 3;
-      if (phase == 0)      { b = 1; }
+      if (phase == 0)      { r = 1; }
       else if (phase == 1) { g = 1; }
-      else                 { b = 1; }
+      else                 { r = 1; }
     }
     else if (m_ledMode == 2) {
       b = 1; // solid blue

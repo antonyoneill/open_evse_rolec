@@ -869,7 +869,7 @@ class OnboardDisplay
   unsigned long m_LastUpdateMs;
 
   // LED override (HA-driven indicator patterns; see $LN/$GN RAPI cmds)
-  uint8_t m_ledMode;        // 0=normal(state machine), 1=flash b-g-b, 2=solid blue, 3=manual RGB
+  uint8_t m_ledMode;        // 0=normal(state machine), 1=flash r-g-r, 2=solid blue, 3=manual RGB
   uint8_t m_ledRGB;         // mode 3: bit2=red, bit1=green, bit0=blue
   uint16_t m_ledPeriodMs;   // mode 1: per-colour period
   unsigned long m_ledLastMs; // pattern timing

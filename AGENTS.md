@@ -76,7 +76,7 @@ $GE  -> "%d %04x"             current capacity (A), persistent flags
 $GU  -> "%lu %lu"             session watt-seconds, lifetime Wh
 $GV  -> "<ver> <rapi_ver>"    version
 $FD / $FE                   disable / enable
-$LN 0|1|2|3 [r g b [ms]]    LED override (0=normal, 1=flash b-g-b, 2=solid blue, 3=manual RGB)
+$LN 0|1|2|3 [r g b [ms]]    LED override (0=normal, 1=flash b-g, 2=solid blue, 3=manual RGB)
 ```
 
 Volatile vflag `ECVF_EV_CONNECTED` (0x0100) stays live while DISABLED —

@@ -858,7 +858,7 @@ int EvseRapiProcessor::processCmd()
     switch(*s) {
     case 'N': { // $LN mode [rgb] [period_ms] - set LED override
       // mode 0: normal (state machine)
-      // mode 1: flash blue->green->blue (period_ms per colour, default 1000)
+      // mode 1: flash blue->green (period_ms per colour, default 1000)
       // mode 2: solid blue
       // mode 3: manual RGB: $LN 3 R G B (each 0/1) e.g. $LN 3 1 0 1 = red+blue
       if (tokenCnt >= 2) {

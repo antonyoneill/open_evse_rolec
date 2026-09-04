@@ -147,6 +147,7 @@ uint32_t MovingAverage(uint32_t samp)
 
 J1772EVSEController::J1772EVSEController() :
   adcPilot(PILOT_PIN)
+  , adcPP(PP_PIN)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
@@ -1251,6 +1252,18 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 
   if (m_EvseState == EVSE_STATE_DISABLED) {
     m_PrevEvseState = m_EvseState; // cancel state transition
+    // Pilot is at -12V so J1772 plug-state detection via CP is impossible,
+    // but the PP (proximity) pin is passive: the plug's resistor divider is
+    // powered from the EV side, not the pilot. Sample it so the EV-connected
+    // flag stays live while disabled — lets HA/RAPI ($GS vflags) tell whether
+    // the car is plugged in without enabling the charger.
+    {
+      uint16_t pp = 0;
+      for (uint8_t i = 0; i < 10; i++) pp += adcPP.read();
+      pp /= 10;
+      if (pp >= PP_PLUGGED_THRESH) ClrEvConnected();
+      else SetEvConnected();
+    }
     return;
   }
 

@@ -463,6 +463,10 @@ extern AutoCurrentCapacityController g_ACCController;
 #define CURRENT_PIN 4 // analog current reading pin ADCx - Not used on Rolec so select unused pin
 #define PILOT_PIN 1 // analog pilot voltage reading pin ADCx - Rolec CP = ADC1
 #define PP_PIN 0 // PP_READ - ADC0 for Rolec
+// PP ADC threshold for plug presence while DISABLED. Rolec empirical table
+// (AutoCurrentCapacityController.cpp): no plug = high ADC (~1023, pull-up),
+// plug present = 11..126 depending on cable resistor. 512 sits safely between.
+#define PP_PLUGGED_THRESH 512
 #ifdef VOLTMETER
 // N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
 // voltmeter pin is ADC2 on OPENEVSE_2

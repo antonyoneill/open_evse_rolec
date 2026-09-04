@@ -139,6 +139,7 @@ class J1772EVSEController {
   uint8_t m_GfiTripCnt; // contains tripcnt-1
 #endif // GFI
   AdcPin adcPilot;
+  AdcPin adcPP;
 #ifdef CURRENT_PIN
   AdcPin adcCurrent;
 #endif

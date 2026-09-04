@@ -1,35 +1,54 @@
-name: Build/Release OpenEVSE
+name: Build (Rolec ACSE0021)
+
+# Validates that the firmware builds for the Rolec ACSE0021 target
+# (openevse_eu PlatformIO environment). Runs on every PR and push to main.
 
 on:
-  workflow_dispatch:
-  push:
-    branches:
-      - master
   pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  info:
-    name: Get event information
+  build:
+    name: openevse_eu (ACSE0021)
     runs-on: ubuntu-latest
     steps:
-      - name: Dump context
-        uses: crazy-max/ghaction-dump-context@v1
+      - uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-  build_platform_io:
-    name: Build using PlatformIO
-    uses: OpenEVSE/open_evse/.github/workflows/build_platformio.yml@master
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-openevse_eu-${{ hashFiles('platformio.ini') }}
+          restore-keys: ${{ runner.os }}-pio-openevse_eu-
 
-  build_arduino:
-    name: Build using Arduino
-    uses: OpenEVSE/open_evse/.github/workflows/build_arduino.yml@master
+      - name: Install PlatformIO
+        run: pipx install platformio==6.1.16
 
-  release:
-    name: Create pre-release
+      - name: Build openevse_eu
+        run: pio run -e openevse_eu
 
-    needs:
-      - build_platform_io
-      - build_arduino
-    if: github.ref == 'refs/heads/master'
+      - name: Build summary
+        run: |
+          ELF=.pio/build/openevse_eu/firmware.elf
+          FLASH=$(avr-size --mcu=atmega328p -C $ELF 2>/dev/null | awk '/Program:/ {print $2}') || true
+          echo "Target: Rolec ACSE0021 (openevse_eu, ATmega328P @ 16MHz)"
+          echo "Flash usage: see build output above"
 
-    uses: OpenEVSE/open_evse/.github/workflows/release.yml@master
+      - name: Upload firmware artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware-openevse_eu-ACSE0021
+          path: |
+            .pio/build/openevse_eu/firmware.hex
+            .pio/build/openevse_eu/firmware.elf
+          if-no-files-found: error

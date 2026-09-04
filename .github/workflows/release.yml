@@ -1,41 +1,70 @@
+name: Release (Rolec ACSE0021)
 
-name: Create pre-release
+# Builds the Rolec ACSE0021 firmware (openevse_eu) and attaches the .hex to
+# a GitHub Release. Triggered by pushing a semver tag (v1.2.3).
+#
+# Target: Rolec ACSE0021 ONLY — other upstream board targets are not built
+# or released from this fork.
 
 on:
-  workflow_call:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: write
 
 jobs:
   release:
+    name: openevse_eu (ACSE0021) ${{ github.ref_name }}
     runs-on: ubuntu-latest
     steps:
-    - name: Install jq
-      run: |
-        sudo apt-get install jq -y
+      - uses: actions/checkout@v4
 
-    - name: Download the built assets
-      uses: actions/download-artifact@v2
-      with:
-        path: artifacts
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
 
-    - name: Rename images to something more sensible
-      run: |
-        find artifacts -name '*.hex' | while read -r image; do
-          dir=$(dirname "${image}")
-          board=$(basename "${dir}")
-          echo mv "$image" "$board.hex"
-          mv "$image" "$board.hex"
-        done
-        jq -s . $(find -name info.json) > build_info.json
-        jq -r '(map(keys) | add | unique) as $cols | map(. as $row | $cols | map($row[.])) as $rows | $cols, $rows[] | @csv' build_info.json > build_info.csv
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: ~/.platformio
+          key: ${{ runner.os }}-pio-openevse_eu-${{ hashFiles('platformio.ini') }}
+          restore-keys: ${{ runner.os }}-pio-openevse_eu-
 
-    - name: Upload assets to latest release
-      uses: "marvinpinto/action-automatic-releases@latest"
-      with:
-        repo_token: "${{ secrets.GITHUB_TOKEN }}"
-        automatic_release_tag: "latest"
-        prerelease: true
-        title: "Development Build"
-        files: |
-          *.hex
-          build_info.json
-          build_info.csv
+      - name: Install PlatformIO
+        run: pipx install platformio==6.1.16
+
+      - name: Build openevse_eu
+        run: pio run -e openevse_eu
+
+      - name: Stage release assets
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          DIR=release-assets
+          mkdir -p "$DIR"
+          cp .pio/build/openevse_eu/firmware.hex \
+             "$DIR/firmware-openevse_eu-ACSE0021-v${TAG}.hex"
+          cp .pio/build/openevse_eu/firmware.elf \
+             "$DIR/firmware-openevse_eu-ACSE0021-v${TAG}.elf"
+          cd "$DIR"
+          sha256sum * > checksums-sha256.txt
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Rolec ACSE0021 firmware ${{ github.ref_name }}
+          body: |
+            Firmware for the **Rolec ACSE0021** (OpenEVSE 8.2.3.EU fork, ATmega328P @ 16MHz).
+
+            **Target:** openevse_eu only — this fork builds/releases solely for the ACSE0021.
+
+            ## Flashing (USBasp ISP, 5V)
+            ```
+            sudo avrdude -c usbasp -p m328p -e -U flash:w:firmware-openevse_eu-ACSE0021-v${{ github.ref_name }}.hex
+            ```
+            Chip-erase clears EEPROM only if EESAVE fuse is unset; verify fuse state before erasing if you rely on stored kWh totals.
+
+          files: release-assets/*
+          fail_on_unmatched_files: true

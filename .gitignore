@@ -188,3 +188,4 @@ Platformio
 
 # build files
 .hex
+firmware_pp-plug-detect-disabled_*.hex

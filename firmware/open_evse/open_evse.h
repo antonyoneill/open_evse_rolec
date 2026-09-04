@@ -467,18 +467,11 @@ extern AutoCurrentCapacityController g_ACCController;
 #define PILOT_PIN 1 // analog pilot voltage reading pin ADCx - Rolec CP = ADC1
 #define PP_PIN 0 // PP_READ - ADC0 for Rolec
 // PP resistor-divider calibration table. Empirical Rolec data
-// (AutoCurrentCapacityController.cpp): ADC = 0.0823R + 3.1279. Lifted
-// out of the ACC controller so plug-presence checks (this fork's
-// PP_PLUG_DETECT in J1772EvseController::ReadPilot()) can use the same
-// values without requiring PP_AUTO_AMPACITY.
-static const PP_AMPS s_ppAmps[] = {
-  {0,0},
-  {11,63},  // 100 ohm = 11
-  {18,32},  // 220 ohm = 18
-  {60,20},  // 680 ohm = 60
-  {126,13}, // 1.5K ohm = 126
-  {1023,0}  // pull-up / no plug
-};
+// (ADC = 0.0823R + 3.1279). Single definition in main.cpp; shared by
+// AutoCurrentCapacityController::ReadPPMaxAmps() and the plug-presence
+// check in J1772EVSEController::ReadPilot().
+extern const PP_AMPS s_ppAmps[6];
+#define PP_AMPS_CNT 6
 #ifdef VOLTMETER
 // N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
 // voltmeter pin is ADC2 on OPENEVSE_2
@@ -889,7 +882,6 @@ class OnboardDisplay
   uint8_t m_ledMode;        // 0=normal(state machine), 1=flash b-g, 2=solid blue, 3=manual RGB
   uint8_t m_ledRGB;         // mode 3: bit2=red, bit1=green, bit0=blue
   uint16_t m_ledPeriodMs;   // mode 1: per-colour period
-  unsigned long m_ledLastMs; // pattern timing
 #endif // LED_CONTROL_MODE
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
@@ -923,7 +915,6 @@ public:
     m_ledMode = mode;
     m_ledRGB = rgb & 0x07;
     m_ledPeriodMs = period_ms ? period_ms : 1000;
-    m_ledLastMs = 0;
   }
 
   uint8_t GetLedMode(uint8_t *rgb, uint16_t *period_ms) {

@@ -31,14 +31,9 @@ static PP_AMPS s_ppAmps[] = {
 
 // This is the empirical table for Rolec
 // ADC = 0.0823R + 3.1279
-static PP_AMPS s_ppAmps[] = {
-  {0,0},
-  {11,63},  // 100 = 11
-  {18,32}, // 220 = 18
-  {60,20}, // 680 = 60
-  {126,13}, // 1.5K = 126
-  {1023,0}
-};
+// (The table now lives in open_evse.h so it can be shared with the
+// plug-presence check in J1772EvseController::ReadPilot() - the ACC
+// controller reads from the same shared array.)
 
 AutoCurrentCapacityController::AutoCurrentCapacityController() :
   adcPP(PP_PIN)

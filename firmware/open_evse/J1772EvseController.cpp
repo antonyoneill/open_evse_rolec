@@ -147,6 +147,7 @@ uint32_t MovingAverage(uint32_t samp)
 
 J1772EVSEController::J1772EVSEController() :
   adcPilot(PILOT_PIN)
+  , adcPP(PP_PIN)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
@@ -1227,6 +1228,33 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
 #endif // MENNEKES_LOCK
     }
   }
+  else {
+    // Pilot is at -12V (DISABLED or state F) so CP-based detection is
+    // impossible, but the PP (proximity) pin is passive: the plug's resistor
+    // divider is powered from the EV side, independent of the pilot.
+    // Reuse the same s_ppAmps[] calibration table the
+    // AutoCurrentCapacityController uses (kept in sync locally so we don't
+    // pull in PP_AUTO_AMPACITY, which would also auto-clamp the current
+    // capacity to the cable's PP rating - a separate concern). A lookup
+    // miss at the high-ADC end of the table means "no plug", any other
+    // match means a plug is present. Keeps the EV-connected flag live for
+    // $GS vflags while disabled or in a -12V fault.
+    if (EvConnected()) SetEvConnectedPrev();
+    else ClrEvConnectedPrev();
+
+    uint16_t pp = 0;
+    for (uint8_t i = 0; i < 10; i++) pp += adcPP.read();
+    pp /= 10;
+    bool plugged = false;
+    for (uint8_t i = 1; i < sizeof(s_ppAmps) / sizeof(s_ppAmps[0]); i++) {
+      if (pp <= (s_ppAmps[i].adcVal - (s_ppAmps[i].adcVal - s_ppAmps[i-1].adcVal) / 2)) {
+        plugged = true;
+        break;
+      }
+    }
+    if (!plugged) ClrEvConnected();
+    else SetEvConnected();
+  }
 
   if (plow) {
     *plow = pl;
@@ -1251,6 +1279,10 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 
   if (m_EvseState == EVSE_STATE_DISABLED) {
     m_PrevEvseState = m_EvseState; // cancel state transition
+    // Pilot sits at -12V while disabled so CP-based plug detection is
+    // impossible - ReadPilot() falls back to the passive PP pin in that
+    // case, keeping the EV-connected flag live for $GS vflags.
+    ReadPilot();
     return;
   }
 

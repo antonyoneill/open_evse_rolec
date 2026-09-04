@@ -146,10 +146,13 @@ typedef unsigned long time_t;
 // enable watchdog timer
 #define WATCHDOG
 
+// PP_AMPS (the PP resistor-divider calibration struct) is needed
+// unconditionally - the shared s_ppAmps[] table below uses it regardless of
+// whether the auto-ampacity feature itself is compiled in.
+#include "AutoCurrentCapacityController.h"
+
 #ifdef PP_AUTO_AMPACITY
 #define STATE_TRANSITION_REQ_FUNC
-
-#include "AutoCurrentCapacityController.h"
 
 extern AutoCurrentCapacityController g_ACCController;
 #endif
@@ -463,6 +466,19 @@ extern AutoCurrentCapacityController g_ACCController;
 #define CURRENT_PIN 4 // analog current reading pin ADCx - Not used on Rolec so select unused pin
 #define PILOT_PIN 1 // analog pilot voltage reading pin ADCx - Rolec CP = ADC1
 #define PP_PIN 0 // PP_READ - ADC0 for Rolec
+// PP resistor-divider calibration table. Empirical Rolec data
+// (AutoCurrentCapacityController.cpp): ADC = 0.0823R + 3.1279. Lifted
+// out of the ACC controller so plug-presence checks (this fork's
+// PP_PLUG_DETECT in J1772EvseController::ReadPilot()) can use the same
+// values without requiring PP_AUTO_AMPACITY.
+static const PP_AMPS s_ppAmps[] = {
+  {0,0},
+  {11,63},  // 100 ohm = 11
+  {18,32},  // 220 ohm = 18
+  {60,20},  // 680 ohm = 60
+  {126,13}, // 1.5K ohm = 126
+  {1023,0}  // pull-up / no plug
+};
 #ifdef VOLTMETER
 // N.B. Note, ADC2 is already used as PP_PIN so beware of potential clashes
 // voltmeter pin is ADC2 on OPENEVSE_2

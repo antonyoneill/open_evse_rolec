@@ -127,8 +127,11 @@ int EvseRapiProcessor::doCmd()
 	    if (!tokenize(buffer)) {
 	      rc = processCmd();
 	    }
-	    else {
+	    	else {
 	      reset();
+#ifdef RAPI_CMD_TAG
+	      curCmdTag[0] = 0; // unknown/malformed command - no tag
+#endif
 	      curReceivedSeqId = INVALID_SEQUENCE_ID;
 	      response(0);
 	    }
@@ -238,9 +241,33 @@ int EvseRapiProcessor::tokenize(char *buf)
 }
 
 uint8_t g_inRapiCommand = 0;
+
+#ifdef RAPI_CMD_TAG
+// Save the command token for echoing in the reply. Must run before any
+// handler sprintf()s over buffer[] - tokenize() points tokens[] INTO buffer,
+// so this is the last chance to capture the command name.
+// Reply format with the tag enabled: "$OK <payload> <CMD>^chk" /
+// "$NK <CMD>^XX" - lets a FIFO-violating transport (MQTT bridge) correlate
+// replies to commands. Tag never carries the '$' (it's stripped by tokenize).
+void EvseRapiProcessor::saveCmdTag()
+{
+  if (tokenCnt > 0) {
+    strncpy(curCmdTag, tokens[0], ESRAPI_CMD_TAG_LEN - 1);
+    curCmdTag[ESRAPI_CMD_TAG_LEN - 1] = 0;
+  }
+  else {
+    curCmdTag[0] = 0;
+  }
+}
+#endif // RAPI_CMD_TAG
+
 int EvseRapiProcessor::processCmd()
 {
   g_inRapiCommand = 1;
+
+#ifdef RAPI_CMD_TAG
+  saveCmdTag();
+#endif
 
   UNION4B u1,u2,u3,u4;
   int rc = -1;
@@ -938,6 +965,12 @@ void EvseRapiProcessor::response(uint8_t ok)
     strcat(g_sTmp," ");
     strcat(g_sTmp,buffer);
   }
+#ifdef RAPI_CMD_TAG
+  if (curCmdTag[0]) {
+    strcat(g_sTmp," ");
+    strcat(g_sTmp,curCmdTag);
+  }
+#endif
   if (curReceivedSeqId != INVALID_SEQUENCE_ID) {
     appendSequenceId(g_sTmp,curReceivedSeqId);
   }

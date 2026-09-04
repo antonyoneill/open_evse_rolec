@@ -432,7 +432,15 @@ extern AutoCurrentCapacityController g_ACCController;
 
 #define LCD_MAX_CHARS_PER_LINE 16
 
-#define TMP_BUF_SIZE ((LCD_MAX_CHARS_PER_LINE+1)*2)
+#define TMP_BUF_BASE ((LCD_MAX_CHARS_PER_LINE+1)*2)
+#ifdef RAPI_CMD_TAG
+// reply also carries the echoed command tag ("$OK <payload> <CMD>^XX");
+// longest command token + nul fits in 8
+#define ESRAPI_CMD_TAG_LEN 8
+#define TMP_BUF_SIZE (TMP_BUF_BASE + ESRAPI_CMD_TAG_LEN)
+#else
+#define TMP_BUF_SIZE TMP_BUF_BASE
+#endif
 
 
 // n.b. DEFAULT_SERVICE_LEVEL is ignored if ADVPWR defined, since it's autodetected

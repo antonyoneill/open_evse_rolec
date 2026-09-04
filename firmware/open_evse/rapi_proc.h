@@ -374,6 +374,8 @@ Z0 closems holdpwm
 #define ESRAPI_EOC 0xd // CR end of command
 #define ESRAPI_SOS ':' // start of sequence id
 #define ESRAPI_MAX_ARGS 10
+// ESRAPI_CMD_TAG_LEN (echoed command tag buffer, RAPI_CMD_TAG) is defined
+// in open_evse.h alongside TMP_BUF_SIZE, which sizes from it
 // for RAPI_SENDER
 #define RAPIS_TIMEOUT_MS 500
 #define RAPIS_BUFLEN 20
@@ -394,6 +396,9 @@ private:
   int8_t tokenCnt;
   char echo;
   uint8_t curReceivedSeqId;
+#ifdef RAPI_CMD_TAG
+  char curCmdTag[ESRAPI_CMD_TAG_LEN]; // echoed in every $OK/$NK reply
+#endif
   void appendSequenceId(char *s,uint8_t seqId);
 #ifdef RAPI_SENDER
   uint8_t curSentSeqId;
@@ -419,6 +424,9 @@ private:
 
   void response(uint8_t ok);
   void appendChk(char *buf);
+#ifdef RAPI_CMD_TAG
+  void saveCmdTag();
+#endif
   
 #ifdef RAPI_SENDER
   char sendbuf[RAPIS_BUFLEN]; // input buffer

@@ -854,6 +854,35 @@ int EvseRapiProcessor::processCmd()
     break;
 #endif // RELAY_HOLD_DELAY_TUNING
 
+#ifdef LED_CONTROL_MODE
+  case 'L': // LED override (Local extensions for HA indicator patterns)
+    switch(*s) {
+    case 'N': { // $LN mode [rgb] [period_ms] - set LED override
+      // mode 0: normal (state machine)
+      // mode 1: flash blue->green (period_ms per colour, default 1000)
+      // mode 2: solid blue
+      // mode 3: manual RGB: $LN 3 R G B (each 0/1) e.g. $LN 3 1 0 1 = red+blue
+      if (tokenCnt >= 2) {
+	uint8_t mode = dtou32(tokens[1]);
+	uint8_t rgb = 0;
+	uint16_t period = 1000;
+	if ((mode == 3) && (tokenCnt >= 5)) {
+	  rgb = ((dtou32(tokens[2]) & 1) << 2) | ((dtou32(tokens[3]) & 1) << 1) | (dtou32(tokens[4]) & 1);
+	}
+	if ((mode == 1) && (tokenCnt >= 3)) {
+	  period = dtou32(tokens[2]);
+	}
+	g_OBD.SetLedMode(mode, rgb, period);
+	rc = 0;
+      }
+      break;
+    }
+    default:
+      ;
+    }
+    break;
+#endif // LED_CONTROL_MODE
+
   default:
     ; // do nothing
   }

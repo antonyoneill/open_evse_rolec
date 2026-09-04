@@ -868,6 +868,14 @@ class OnboardDisplay
   char m_strBuf[LCD_MAX_CHARS_PER_LINE+1];
   unsigned long m_LastUpdateMs;
 
+#ifdef LED_CONTROL_MODE
+  // LED override (HA-driven indicator patterns; see $LN/$GN RAPI cmds)
+  uint8_t m_ledMode;        // 0=normal(state machine), 1=flash b-g, 2=solid blue, 3=manual RGB
+  uint8_t m_ledRGB;         // mode 3: bit2=red, bit1=green, bit0=blue
+  uint16_t m_ledPeriodMs;   // mode 1: per-colour period
+  unsigned long m_ledLastMs; // pattern timing
+#endif // LED_CONTROL_MODE
+
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }
 
   void MakeChar(uint8_t n, PGM_P bytes);
@@ -892,6 +900,22 @@ public:
   pinBlueLed.write(state);
 #endif
   }
+
+  // --- LED override (never applies in fault/hard-fault states) ---
+#ifdef LED_CONTROL_MODE
+  void SetLedMode(uint8_t mode, uint8_t rgb, uint16_t period_ms) {
+    m_ledMode = mode;
+    m_ledRGB = rgb & 0x07;
+    m_ledPeriodMs = period_ms ? period_ms : 1000;
+    m_ledLastMs = 0;
+  }
+
+  uint8_t GetLedMode(uint8_t *rgb, uint16_t *period_ms) {
+    *rgb = m_ledRGB;
+    *period_ms = m_ledPeriodMs;
+    return m_ledMode;
+  }
+#endif // LED_CONTROL_MODE
 
 #ifdef LCD16X2
   void LcdBegin(int x,int y) {

@@ -404,6 +404,13 @@ void OnboardDisplay::Init()
   m_bFlags = OBDF_MONO_BACKLIGHT;
 #endif // RGBLCD
 
+#ifdef LED_CONTROL_MODE
+  m_ledMode = 0;
+  m_ledRGB = 0;
+  m_ledPeriodMs = 1000;
+  m_ledLastMs = 0;
+#endif // LED_CONTROL_MODE
+
 #ifdef GREEN_LED_REG
   pinGreenLed.init(GREEN_LED_REG,GREEN_LED_IDX,DigitalPin::OUT);
   SetGreenLed(0);
@@ -513,6 +520,38 @@ void OnboardDisplay::LcdMsg(const char *l1,const char *l2)
 void OnboardDisplay::Update(int8_t updmode)
 {
   if (updateDisabled() && !g_EvseController.InFaultState()) return;
+
+#ifdef LED_CONTROL_MODE
+  // HA-driven LED override (modes: 1=flash b-g, 2=solid blue, 3=manual RGB).
+  // Skipped in: any fault, hard fault, and during active charging (state C).
+  // Charging keeps its stock solid-blue indication so the user can always tell
+  // the car is drawing current regardless of HA's last $LN command.
+  if (m_ledMode && !g_EvseController.InFaultState() && !g_EvseController.InHardFault() &&
+      g_EvseController.GetState() != EVSE_STATE_C) {
+    unsigned long now = millis();
+    uint8_t r = 0, g = 0, b = 0;
+
+    if (m_ledMode == 1) {
+      // 2-phase flash: blue -> green, cycling on m_ledPeriodMs
+      unsigned long phase = (now / m_ledPeriodMs) % 2;
+      if (phase == 0)      { b = 1; }
+      else                 { g = 1; }
+    }
+    else if (m_ledMode == 2) {
+      b = 1; // solid blue
+    }
+    else { // mode 3: manual RGB (bit2=red bit1=green bit0=blue)
+      r = (m_ledRGB >> 2) & 1;
+      g = (m_ledRGB >> 1) & 1;
+      b = m_ledRGB & 1;
+    }
+
+    SetRedLed(r);
+    SetGreenLed(g);
+    SetBlueLed(b);
+    return; // override owns the LEDs this pass - skip state-machine LED writes
+  }
+#endif // LED_CONTROL_MODE
 
   uint8_t curstate = g_EvseController.GetState();
 #ifdef LCD16X2

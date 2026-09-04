@@ -147,6 +147,7 @@ uint32_t MovingAverage(uint32_t samp)
 
 J1772EVSEController::J1772EVSEController() :
   adcPilot(PILOT_PIN)
+  , adcPP(PP_PIN)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
@@ -1227,6 +1228,22 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
 #endif // MENNEKES_LOCK
     }
   }
+#ifdef PP_PLUGGED_THRESH
+  else {
+    // Pilot is at -12V (DISABLED or state F) so CP-based detection is
+    // impossible, but the PP (proximity) pin is passive: the plug's resistor
+    // divider is powered from the EV side, independent of the pilot.
+    // Fallback: sample PP so the EV-connected flag stays live for $GS vflags.
+    if (EvConnected()) SetEvConnectedPrev();
+    else ClrEvConnectedPrev();
+
+    uint16_t pp = 0;
+    for (uint8_t i = 0; i < 10; i++) pp += adcPP.read();
+    pp /= 10;
+    if (pp >= PP_PLUGGED_THRESH) ClrEvConnected();
+    else SetEvConnected();
+  }
+#endif // PP_PLUGGED_THRESH
 
   if (plow) {
     *plow = pl;
@@ -1251,6 +1268,10 @@ void J1772EVSEController::Update(uint8_t forcetransition)
 
   if (m_EvseState == EVSE_STATE_DISABLED) {
     m_PrevEvseState = m_EvseState; // cancel state transition
+    // Pilot sits at -12V while disabled so CP-based plug detection is
+    // impossible - ReadPilot() falls back to the passive PP pin in that
+    // case, keeping the EV-connected flag live for $GS vflags.
+    ReadPilot();
     return;
   }
 

@@ -854,8 +854,8 @@ int EvseRapiProcessor::processCmd()
     break;
 #endif // RELAY_HOLD_DELAY_TUNING
 
-  case 'L': // LED override (Local extensions for HA indicator patterns)
 #ifdef LED_CONTROL_MODE
+  case 'L': // LED override (Local extensions for HA indicator patterns)
     switch(*s) {
     case 'N': { // $LN mode [rgb] [period_ms] - set LED override
       // mode 0: normal (state machine)
@@ -880,8 +880,8 @@ int EvseRapiProcessor::processCmd()
     default:
       ;
     }
-#endif // LED_CONTROL_MODE
     break;
+#endif // LED_CONTROL_MODE
 
   default:
     ; // do nothing

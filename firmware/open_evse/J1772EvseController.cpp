@@ -148,6 +148,8 @@ uint32_t MovingAverage(uint32_t samp)
 J1772EVSEController::J1772EVSEController() :
   adcPilot(PILOT_PIN)
   , adcPP(PP_PIN)
+  , m_LastPpSampleMs(0)
+  , m_PpPlugged(0)
 #ifdef CURRENT_PIN
   , adcCurrent(CURRENT_PIN)
 #endif
@@ -1233,27 +1235,33 @@ void J1772EVSEController::ReadPilot(uint16_t *plow,uint16_t *phigh)
     // impossible, but the PP (proximity) pin is passive: the plug's resistor
     // divider is powered from the EV side, independent of the pilot.
     // Reuse the same s_ppAmps[] calibration table the
-    // AutoCurrentCapacityController uses (kept in sync locally so we don't
-    // pull in PP_AUTO_AMPACITY, which would also auto-clamp the current
-    // capacity to the cable's PP rating - a separate concern). A lookup
-    // miss at the high-ADC end of the table means "no plug", any other
-    // match means a plug is present. Keeps the EV-connected flag live for
-    // $GS vflags while disabled or in a -12V fault.
+    // AutoCurrentCapacityController uses. A lookup miss at the high-ADC end
+    // of the table means "no plug", any other match means a plug is present.
+    // Keeps the EV-connected flag live for $GS vflags while disabled or in
+    // a -12V fault.
+    // Rate-limited to 2 Hz: AdcPin::read() busy-waits ~112us per sample,
+    // so the 10x average costs ~1.1ms - sampling it every main-loop pass
+    // would needlessly slow the DISABLED loop.
     if (EvConnected()) SetEvConnectedPrev();
     else ClrEvConnectedPrev();
 
-    uint16_t pp = 0;
-    for (uint8_t i = 0; i < 10; i++) pp += adcPP.read();
-    pp /= 10;
-    bool plugged = false;
-    for (uint8_t i = 1; i < sizeof(s_ppAmps) / sizeof(s_ppAmps[0]); i++) {
-      if (pp <= (s_ppAmps[i].adcVal - (s_ppAmps[i].adcVal - s_ppAmps[i-1].adcVal) / 2)) {
-        plugged = true;
-        break;
+    unsigned long now = millis();
+    if ((now - m_LastPpSampleMs) >= 500) {
+      m_LastPpSampleMs = now;
+
+      uint16_t pp = 0;
+      for (uint8_t i = 0; i < 10; i++) pp += adcPP.read();
+      pp /= 10;
+      m_PpPlugged = false;
+      for (uint8_t i = 1; i < PP_AMPS_CNT; i++) {
+	if (pp <= (s_ppAmps[i].adcVal - (s_ppAmps[i].adcVal - s_ppAmps[i-1].adcVal) / 2)) {
+	  m_PpPlugged = true;
+	  break;
+	}
       }
     }
-    if (!plugged) ClrEvConnected();
-    else SetEvConnected();
+    if (m_PpPlugged) SetEvConnected();
+    else ClrEvConnected();
   }
 
   if (plow) {

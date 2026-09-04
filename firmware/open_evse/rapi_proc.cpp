@@ -747,6 +747,20 @@ int EvseRapiProcessor::processCmd()
       rc = 0;
       break;
 #endif // VOLTMETER
+#ifdef LED_CONTROL_MODE
+    case 'N': // get LED override state (see $LN)
+      {
+	uint8_t rgb;
+	uint16_t period;
+	u1.u8 = g_OBD.GetLedMode(&rgb,&period);
+	u2.u8 = rgb;
+	u3.u16 = period;
+	sprintf(buffer,"%u %u %u",(unsigned)u1.u8,(unsigned)u2.u8,(unsigned)u3.u16);
+      }
+      bufCnt = 1; // flag response text output
+      rc = 0;
+      break;
+#endif // LED_CONTROL_MODE
 #ifdef TEMPERATURE_MONITORING
 #ifdef TEMPERATURE_MONITORING_NY
     case 'O':

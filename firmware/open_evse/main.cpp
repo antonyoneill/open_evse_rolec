@@ -201,6 +201,19 @@ AutoCurrentCapacityController g_ACCController;
 
 //-- end global variables
 
+// PP resistor-divider calibration table - Rolec empirical data.
+// ADC = 0.0823R + 3.1279. Declared extern in open_evse.h; single
+// definition here so every consumer (ACC controller, plug-presence
+// check) reads one copy from flash.
+const PP_AMPS s_ppAmps[] = {
+  {0,0},
+  {11,63},  // 100 ohm = 11
+  {18,32},  // 220 ohm = 18
+  {60,20},  // 680 ohm = 60
+  {126,13}, // 1.5K ohm = 126
+  {1023,0}  // pull-up / no plug
+};
+
 // watchdog-safe delay - use this when delay is longer than watchdog
 // *do not* call this before WDT_ENABLE() is called
 void wdt_delay(uint32_t ms)
@@ -408,7 +421,6 @@ void OnboardDisplay::Init()
   m_ledMode = 0;
   m_ledRGB = 0;
   m_ledPeriodMs = 1000;
-  m_ledLastMs = 0;
 #endif // LED_CONTROL_MODE
 
 #ifdef GREEN_LED_REG

@@ -140,6 +140,8 @@ class J1772EVSEController {
 #endif // GFI
   AdcPin adcPilot;
   AdcPin adcPP;
+  unsigned long m_LastPpSampleMs; // rate-limits the PP sampling in ReadPilot()'s -12V branch
+  uint8_t m_PpPlugged;            // last sampled plug presence (0/1) - applied every pass between samples
 #ifdef CURRENT_PIN
   AdcPin adcCurrent;
 #endif

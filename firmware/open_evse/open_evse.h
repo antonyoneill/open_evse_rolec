@@ -887,9 +887,14 @@ class OnboardDisplay
 
 #ifdef LED_CONTROL_MODE
   // LED override (HA-driven indicator patterns; see $LN/$GN RAPI cmds)
-  uint8_t m_ledMode;        // 0=normal(state machine), 1=flash b-g, 2=solid blue, 3=manual RGB
+  // mode 0: normal (state machine drives LEDs)
+  // mode 1: 2-phase "plug-in" hint - phase 0 blue, phase 1 green if enabled
+  //         or red if currently DISABLED. Colour follows GetState() live.
+  // mode 2: REMOVED (rejected by $LN handler with $NK)
+  // mode 3: manual RGB
+  uint8_t m_ledMode;
   uint8_t m_ledRGB;         // mode 3: bit2=red, bit1=green, bit0=blue
-  uint16_t m_ledPeriodMs;   // mode 1: per-colour period
+  uint16_t m_ledPeriodMs;   // mode 1: per-phase period
 #endif // LED_CONTROL_MODE
 
   int8_t updateDisabled() { return  m_bFlags & OBDF_UPDATE_DISABLED; }

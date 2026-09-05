@@ -534,23 +534,31 @@ void OnboardDisplay::Update(int8_t updmode)
   if (updateDisabled() && !g_EvseController.InFaultState()) return;
 
 #ifdef LED_CONTROL_MODE
-  // HA-driven LED override (modes: 1=flash b-g, 2=solid blue, 3=manual RGB).
+  // HA-driven LED override (modes: 1=state-aware plug-in hint, 3=manual RGB).
   // Skipped in: any fault, hard fault, and during active charging (state C).
   // Charging keeps its stock solid-blue indication so the user can always tell
   // the car is drawing current regardless of HA's last $LN command.
+  //
+  // Mode 1 is a 2-phase "plug the car in" hint whose phase-1 colour reflects
+  // the actual EVSE state, so the LEDs always match the hardware:
+  //   - enabled  (state A/B)  -> flash blue <-> green  ("plug in, charge now")
+  //   - disabled (state FF)   -> flash blue <-> red    ("plug in, charge later")
+  // The colour follows state live, so a $FE/$FD flip mid-flash swaps the
+  // second colour without HA needing to re-issue $LN.
   if (m_ledMode && !g_EvseController.InFaultState() && !g_EvseController.InHardFault() &&
       g_EvseController.GetState() != EVSE_STATE_C) {
     unsigned long now = millis();
     uint8_t r = 0, g = 0, b = 0;
 
     if (m_ledMode == 1) {
-      // 2-phase flash: blue -> green, cycling on m_ledPeriodMs
+      // 2-phase flash: phase 0 is always blue (the constant "plug-in prompt");
+      // phase 1 is green if the EVSE is enabled, red if it is currently
+      // disabled. The state check is cheap (one byte compare) and runs every
+      // pass, so a $FE/$FD swap is reflected within one full period.
       unsigned long phase = (now / m_ledPeriodMs) % 2;
       if (phase == 0)      { b = 1; }
+      else if (g_EvseController.GetState() == EVSE_STATE_DISABLED) { r = 1; }
       else                 { g = 1; }
-    }
-    else if (m_ledMode == 2) {
-      b = 1; // solid blue
     }
     else { // mode 3: manual RGB (bit2=red bit1=green bit0=blue)
       r = (m_ledRGB >> 2) & 1;

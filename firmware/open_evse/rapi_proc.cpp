@@ -899,14 +899,24 @@ int EvseRapiProcessor::processCmd()
   case 'L': // LED override (Local extensions for HA indicator patterns)
     switch(*s) {
     case 'N': { // $LN mode [rgb] [period_ms] - set LED override
-      // mode 0: normal (state machine)
-      // mode 1: flash blue->green (period_ms per colour, default 1000)
-      // mode 2: solid blue
+      // mode 0: normal (state machine drives LEDs)
+      // mode 1: 2-phase "plug-in" hint - phase 0 blue, phase 1 is green if
+      //         enabled or red if currently DISABLED (state FF). The colour
+      //         follows GetState() live, so a $FE/$FD flip swaps the second
+      //         colour within one full period without re-issuing $LN.
+      //         $LN 1 [period_ms] - period_ms per phase, default 1000.
+      // mode 2: REMOVED (was solid blue). Rejected with $NK so a stale HA
+      //         button can't accidentally re-enable it. The bridge daemon no
+      //         longer publishes a button for mode 2.
       // mode 3: manual RGB: $LN 3 R G B (each 0/1) e.g. $LN 3 1 0 1 = red+blue
       if (tokenCnt >= 2) {
 	uint8_t mode = dtou32(tokens[1]);
 	uint8_t rgb = 0;
 	uint16_t period = 1000;
+	// mode 2 is intentionally unsupported - return $NK (rc stays non-zero)
+	if (mode == 2) {
+	  break;
+	}
 	if ((mode == 3) && (tokenCnt >= 5)) {
 	  rgb = ((dtou32(tokens[2]) & 1) << 2) | ((dtou32(tokens[3]) & 1) << 1) | (dtou32(tokens[4]) & 1);
 	}

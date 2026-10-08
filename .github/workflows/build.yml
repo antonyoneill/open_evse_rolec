@@ -69,11 +69,20 @@ jobs:
           echo "Target: Rolec ACSE0021 (openevse_eu, ATmega328P @ 16MHz)"
           echo "Flash usage: see build output above"
 
+      - name: Rename artifacts with git sha
+        run: |
+          SHA="${GITHUB_SHA::7}"
+          cd .pio/build/openevse_eu
+          cp firmware.hex "firmware-openevse_eu-ACSE0021-main-${SHA}.hex"
+          cp firmware.elf "firmware-openevse_eu-ACSE0021-main-${SHA}.elf"
+          sha256sum firmware-openevse_eu-ACSE0021-main-${SHA}.* > checksums-sha256.txt
+
       - name: Upload firmware artifact
         uses: actions/upload-artifact@v5
         with:
-          name: firmware-openevse_eu-ACSE0021
+          name: firmware-openevse_eu-ACSE0021-${{ github.sha }}
           path: |
-            .pio/build/openevse_eu/firmware.hex
-            .pio/build/openevse_eu/firmware.elf
+            .pio/build/openevse_eu/firmware-openevse_eu-ACSE0021-main-*.hex
+            .pio/build/openevse_eu/firmware-openevse_eu-ACSE0021-main-*.elf
+            .pio/build/openevse_eu/checksums-sha256.txt
           if-no-files-found: error

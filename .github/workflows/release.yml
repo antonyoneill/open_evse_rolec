@@ -39,6 +39,13 @@ jobs:
       - name: Build openevse_eu
         run: pio run -e openevse_eu
 
+      - name: Stamp fork version (tag semver)
+        run: |
+          VER="8.2.3-${GITHUB_REF_NAME#v}"
+          sed -i "s/^version = .*/version = ${VER}/" platformio.ini
+          echo "Version - ${VER}.EU"
+          grep '^version' platformio.ini
+
       - name: Stage release assets
         run: |
           TAG="${GITHUB_REF_NAME#v}"
@@ -56,7 +63,7 @@ jobs:
         with:
           name: Rolec ACSE0021 firmware ${{ github.ref_name }}
           body: |
-            Firmware for the **Rolec ACSE0021** (OpenEVSE 8.2.3.EU fork, ATmega328P @ 16MHz).
+            Firmware for the **Rolec ACSE0021** (OpenEVSE 8.2.3-rolec fork — version stamped from the release tag at build time, ATmega328P @ 16MHz).
 
             **Target:** openevse_eu only — this fork builds/releases solely for the ACSE0021.
 

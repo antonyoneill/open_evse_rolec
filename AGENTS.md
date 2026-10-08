@@ -77,7 +77,8 @@ $GU  -> "%lu %lu"             session watt-seconds, lifetime Wh
 $GN  -> "%u %u %u"            LED override mode, rgb bits, period_ms (see $LN)
 $GV  -> "<ver> <rapi_ver>"    version
 $FD / $FE                   disable / enable
-$LN 0|1|2|3 [r g b [ms]]    LED override (0=normal, 1=flash b-g, 2=solid blue, 3=manual RGB)
+$LN 0|1|3 [r g b [ms]]    LED override (0=normal, 1=state-aware plug-in hint, 3=manual RGB)
+                           Mode 2 (was solid blue) is REMOVED and rejected with $NK.
 ```
 
 Volatile vflag `ECVF_EV_CONNECTED` (0x0100) stays live while DISABLED —
@@ -90,6 +91,11 @@ derived from passive PP pin sampling, not the pilot (pilot sits at -12V).
 - LED green shares PD7 with the RL2 driver — only one colour at a time.
 - `$LN` override is intentionally skipped during EVSE_STATE_C (charging) so
   the user always sees real charging state.
+- `$LN 1` is a state-aware "plug-in" hint: phase 0 is always blue; phase 1 is
+  green if the EVSE is currently enabled (state A/B) or red if currently
+  DISABLED. The colour follows `GetState()` every pass, so a `$FE`/`$FD` flip
+  swaps the second colour within one full period with no re-issue of `$LN`.
+  Mode 2 (was solid blue) is REMOVED — `$LN 2` returns `$NK`.
 - The Elfin bridge sends raw `$CMD\r\n` (no checksum); the firmware parser
   accepts it, replies carry XOR checksums.
 - PP plug-detect also runs during -12V *fault* states (e.g. GFI trips), not

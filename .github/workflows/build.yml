@@ -37,6 +37,31 @@ jobs:
       - name: Build openevse_eu
         run: pio run -e openevse_eu
 
+      - name: Stamp fork version (PR build - branch name)
+        if: github.event_name == 'pull_request'
+        run: |
+          BRANCH="${{ github.head_ref }}"
+          VER="8.2.3-${BRANCH#pr/}"
+          sed -i "s/^version = .*/version = ${VER}/" platformio.ini
+          echo "PR version - ${VER}.EU"
+          grep '^version' platformio.ini
+
+      - name: Stamp fork version (main push - sha)
+        if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+        run: |
+          VER="8.2.3-main-${GITHUB_SHA::7}"
+          sed -i "s/^version = .*/version = ${VER}/" platformio.ini
+          echo "Version - ${VER}.EU"
+          grep '^version' platformio.ini
+
+      - name: Stamp fork version (tag - semver)
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VER="8.2.3-${GITHUB_REF_NAME#v}"
+          sed -i "s/^version = .*/version = ${VER}/" platformio.ini
+          echo "Version - ${VER}.EU"
+          grep '^version' platformio.ini
+
       - name: Build summary
         run: |
           ELF=.pio/build/openevse_eu/firmware.elf

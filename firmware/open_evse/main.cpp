@@ -1040,6 +1040,24 @@ void OnboardDisplay::Update(int8_t updmode)
 #endif // LCD16X2
   }
 
+#ifdef LED_CONTROL_MODE
+  // Re-assert disambiguation AFTER the state-machine switch: DISABLED keeps
+  // solid red, genuine faults flash red (~1 Hz) instead of the switch's
+  // stock solid red. ($LN override already returned above if active.)
+  if (!m_ledMode) {
+    if (g_EvseController.GetState() == EVSE_STATE_DISABLED) {
+      SetRedLed(1);
+      SetGreenLed(0);
+      SetBlueLed(0);
+    }
+    else if (g_EvseController.InFaultState()) {
+      SetRedLed((millis() / 500) & 1);
+      SetGreenLed(0);
+      SetBlueLed(0);
+    }
+  }
+#endif // LED_CONTROL_MODE
+
 #ifdef FT_ENDURANCE
   LcdSetCursor(0,0);
   sprintf(g_sTmp,"%d %d",g_CycleCnt,(int)g_EvseController.ReadACPins());

@@ -41,6 +41,7 @@
 #define EVSE_FAULT_STATE_END EVSE_STATE_RELAY_CLOSURE_FAULT
            
 #define EVSE_STATE_SLEEPING 0xfe // waiting for timer
+#define EVSE_STATE_STANDBY  0xfd // standby - CP live, charging blocked
 #define EVSE_STATE_DISABLED 0xff // disabled
 
 inline int8_t IsEvseFaultState(uint8_t state) {
@@ -295,6 +296,8 @@ public:
   void Enable();
   void Disable(); // panic stop - open relays abruptly
   void Sleep(); // graceful stop - e.g. waiting for timer to fire- give the EV time to stop charging first
+  void Standby(); // keep CP at State B, block charging, EV stays awake
+  void Wake(); // exit standby, resume normal state machine
 
   uint16_t GetFlags() { return m_wFlags; }
   uint16_t GetVFlags() { return m_wVFlags; }

@@ -389,6 +389,14 @@ int EvseRapiProcessor::processCmd()
       g_EvseController.Sleep();
       rc = 0;
       break;
+    case 'V': // standby - keep CP at State B, block charging
+      g_EvseController.Standby();
+      rc = 0;
+      break;
+    case 'W': // wake from standby
+      g_EvseController.Wake();
+      rc = 0;
+      break;
     }
     break;
 

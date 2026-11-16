@@ -576,6 +576,40 @@ void J1772EVSEController::Sleep()
   }
 }
 
+void J1772EVSEController::Standby()
+{
+  if (m_EvseState != EVSE_STATE_STANDBY) {
+    // Keep CP at State B (+9V) so the vehicle's pilot sensing never
+    // drops out. The car stays awake and connected. Charging is
+    // blocked by the state machine in Update() — it will not
+    // transition to STATE_C while in STANDBY.
+    m_Pilot.SetState(PILOT_STATE_P12);
+    m_Pilot.SetPWM(m_CurrentCapacity);
+    m_PrevEvseState = m_EvseState;
+    m_EvseState = EVSE_STATE_STANDBY;
+
+    g_OBD.Update(OBD_UPD_FORCE);
+
+#ifdef RAPI
+    RapiSendEvseState();
+#endif // RAPI
+  }
+}
+
+void J1772EVSEController::Wake()
+{
+  if (m_EvseState == EVSE_STATE_STANDBY) {
+    m_EvseState = EVSE_STATE_UNKNOWN;
+    m_Pilot.SetState(PILOT_STATE_P12);
+
+    g_OBD.Update(OBD_UPD_FORCE);
+
+#ifdef RAPI
+    RapiSendEvseState();
+#endif // RAPI
+  }
+}
+
 void J1772EVSEController::SetSvcLevel(uint8_t svclvl,uint8_t updatelcd)
 {
 #ifdef SERDBG
@@ -1291,6 +1325,16 @@ void J1772EVSEController::Update(uint8_t forcetransition)
     // impossible - ReadPilot() falls back to the passive PP pin in that
     // case, keeping the EV-connected flag live for $GS vflags.
     ReadPilot();
+    return;
+  }
+
+  if (m_EvseState == EVSE_STATE_STANDBY) {
+    m_PrevEvseState = m_EvseState; // cancel state transition
+    // CP stays at State B (+9V) — the vehicle's pilot sensing never
+    // drops out. Keep sampling PP for plug presence so $GS reports
+    // live EV-connected status. Charging is blocked: the state
+    // machine below will not transition to STATE_C while in STANDBY.
+    ReadPilot(&plow, &phigh);
     return;
   }
 
